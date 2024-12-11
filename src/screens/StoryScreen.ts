@@ -83,9 +83,10 @@ export class StoryScreen extends Container {
         this.pageText = new Text({
             text: '',
             style: {
-                fontSize: 25,
+                fontSize: 20,
                 fontFamily: 'Roboto',
-                fill: 0x000066,
+                fill: 0xFFFFFF,
+                fontWeight: 'bold',
                 align: 'center',
                 wordWrap: true,
                 wordWrapWidth: width * 0.6,
@@ -97,9 +98,9 @@ export class StoryScreen extends Container {
         this.pageText.filters = [
             new DropShadowFilter({
                 color: 0x000000,
-                alpha: 0.5,
-                blur: 4,
-                offset: { x: 4, y: 4 },
+                alpha: 0.8,
+                blur: 3,
+                offset: { x: 2, y: 2 },
                 quality: 3
             })
         ];
@@ -109,12 +110,12 @@ export class StoryScreen extends Container {
 
         // Create text background panel
         this.textPanel = new Graphics();
-        this.textPanel.beginFill(0xFFFFFF, 0.8);
+        this.textPanel.beginFill(0x000000, 0.5);
         this.textPanel.drawRoundedRect(
             -width * 0.3,    // Căn giữa panel
             -50,             // Đẩy lên trên một chút
             width * 0.6,     // Chiều rộng bằng 60% màn hình
-            200,             // Chiều cao cố định
+            200,             // Chi��u cao cố định
             20               // Bo góc
         );
         this.textPanel.endFill();
@@ -130,12 +131,13 @@ export class StoryScreen extends Container {
 
         // Cập nhật style của text
         this.pageText.style = {
-            fontSize: 25,
+            fontSize: 20,
             fontFamily: 'Roboto',
-            fill: 0x000066,      // Màu xanh đậm
+            fill: 0xFFFFFF,
+            fontWeight: 'bold',
             align: 'center',
             wordWrap: true,
-            wordWrapWidth: width * 0.55,  // Nhỏ hơn panel một chút
+            wordWrapWidth: width * 0.55,
             lineHeight: 40,
             letterSpacing: 1,
             padding: 20,
@@ -157,7 +159,7 @@ export class StoryScreen extends Container {
             shape: ButtonShape.RoundedRectangle,
             width: 120,
             height: 50,
-            borderColor: 0x2E7D32,
+            borderColor: 0x2E7D20,
             backgroundColor: 0x4CAF50,
             textStyle: {
                 fontSize: 24,
@@ -172,7 +174,7 @@ export class StoryScreen extends Container {
             shape: ButtonShape.RoundedRectangle,
             width: 120,
             height: 50,
-            borderColor: 0x2E7D32,
+            borderColor: 0x2E7D20,
             backgroundColor: 0x4CAF50,
             textStyle: {
                 fontSize: 24,
@@ -391,7 +393,7 @@ export class StoryScreen extends Container {
         const padding = 40;
 
         this.textPanel.clear();
-        this.textPanel.beginFill(0xFFFFFF, 0.8);
+        this.textPanel.beginFill(0x000000, 0.5);
         this.textPanel.drawRoundedRect(
             -textBounds.width / 2 - padding,  // Căn giữa và thêm padding
             -padding,                         // Thêm padding phía trên

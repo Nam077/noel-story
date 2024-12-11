@@ -145,7 +145,7 @@ export class DrawScreen extends Container {
             width: buttonSize * 2,
             height: buttonSize,
             backgroundColor: 0x4CAF50,
-            onClick: () => this.drawingCanvas.drawChristmasTree()
+            onClick: async () => await this.drawingCanvas.drawChristmasTree()
         });
         drawTreeButton.setPosition(
             controlPanelX, 

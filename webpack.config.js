@@ -18,7 +18,15 @@ module.exports = {
                 test: /\.(png|jpg|gif)$/i,
                 type: 'asset/resource',
                 generator: {
-                    filename: 'assets/images/[hash][ext][query]'
+                    filename: 'assets/images/[hash][ext][query]',
+                
+                }
+            },
+            {
+                test: /\.(mp3)$/,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/musics/[hash][ext][query]'
                 }
             }
         ],

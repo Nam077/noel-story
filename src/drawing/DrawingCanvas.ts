@@ -5,31 +5,45 @@ export class DrawingCanvas extends Container {
     private isDrawing: boolean = false;
     private lineColor: number = 0x000000;
     private lineWidth: number = 3;
-    private lines: Graphics[] = [];
+    private userLines: Graphics[] = [];
+
+    private userDrawingLayer: Container;
+    private treeLayer: Container;
 
     constructor(width: number, height: number) {
         super();
 
-        // Tạo vùng vẽ
+        // Tạo nền vẽ
         const drawArea = new Graphics();
-        drawArea.setStrokeStyle({
-            width: 2,
-            color: 0x999999
-        });
-        drawArea.beginFill(0xFFFFFF);
-        drawArea.rect(0, 0, width, height);
-        drawArea.endFill();
+        drawArea.setStrokeStyle({ width: 2, color: 0x999999 });
+        drawArea.setFillStyle({ color: 0xF0F8FF, alpha: 0.5 });
+        
+        // Bo tròn góc với radius 20px
+        drawArea.drawRoundedRect(0, 0, width, height, 20);
+        drawArea.fill();
+        drawArea.stroke();
         this.addChild(drawArea);
 
-        // Cấu hình events cho drawArea
+        // Tạo 2 layer: 1 cho cây/trang trí, 1 cho người dùng vẽ
+        this.treeLayer = new Container();
+        this.addChild(this.treeLayer);
+
+        this.userDrawingLayer = new Container();
+        this.addChild(this.userDrawingLayer);
+
+        // Cấu hình sự kiện cho vùng vẽ
         drawArea.eventMode = 'static';
         drawArea.cursor = 'crosshair';
-        
-        // Bind events
+
         drawArea.on('pointerdown', this.onPointerDown.bind(this));
         drawArea.on('pointermove', this.onPointerMove.bind(this));
         drawArea.on('pointerup', this.onPointerUp.bind(this));
         drawArea.on('pointerupoutside', this.onPointerUp.bind(this));
+
+        // Vẽ cây thông sau 1 giây
+        setTimeout(() => {
+            this.drawChristmasTree();
+        }, 1000);
     }
 
     private onPointerDown(event: any): void {
@@ -37,26 +51,19 @@ export class DrawingCanvas extends Container {
         const pos = event.getLocalPosition(this);
 
         this.currentLine = new Graphics();
-        this.currentLine.setStrokeStyle({
-            width: this.lineWidth,
-            color: this.lineColor,
-            alignment: 0.5,  // Căn giữa stroke
-        });
-
-        this.currentLine.beginPath();  // Bắt đầu path mới
+        this.currentLine.setStrokeStyle({ width: this.lineWidth, color: this.lineColor });
+        this.currentLine.beginPath();
         this.currentLine.moveTo(pos.x, pos.y);
-        this.currentLine.stroke();     // Vẽ stroke
-        
-        this.addChild(this.currentLine);
-        this.lines.push(this.currentLine);
+
+        this.userDrawingLayer.addChild(this.currentLine);
+        this.userLines.push(this.currentLine);
     }
 
     private onPointerMove(event: any): void {
         if (!this.isDrawing || !this.currentLine) return;
-
         const pos = event.getLocalPosition(this);
         this.currentLine.lineTo(pos.x, pos.y);
-        this.currentLine.stroke();  // Vẽ stroke sau mỗi lần di chuyển
+        this.currentLine.stroke();
     }
 
     private onPointerUp(): void {
@@ -72,28 +79,100 @@ export class DrawingCanvas extends Container {
         this.lineWidth = width;
     }
 
+    // Xóa toàn bộ nét vẽ và cây thông
     public clear(): void {
-        this.lines.forEach(line => {
-            this.removeChild(line);
+        // Xóa các nét vẽ của người dùng
+        this.userLines.forEach(line => {
+            this.userDrawingLayer.removeChild(line);
             line.destroy();
         });
-        this.lines = [];
+        this.userLines = [];
+
+        // Xóa toàn bộ các phần tử trong treeLayer
+        this.treeLayer.removeChildren();
     }
 
-    private animateDrawing(graphics: Graphics, commands: Array<() => void>, delay: number = 50): Promise<void> {
-        return new Promise<void>((resolve) => {
-            let index = 0;
-            const animate = () => {
-                if (index < commands.length) {
-                    commands[index]();
-                    index++;
-                    setTimeout(animate, delay);
-                } else {
-                    resolve();
-                }
-            };
-            animate();
+    // Chỉ xóa nét vẽ của người dùng
+    public clearUserDrawing(): void {
+        this.userLines.forEach(line => {
+            this.userDrawingLayer.removeChild(line);
+            line.destroy();
         });
+        this.userLines = [];
+    }
+
+    private async drawTreePart(graphics: Graphics, drawFunction: () => void): Promise<void> {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                drawFunction();
+                resolve();
+            }, 300); 
+        });
+    }
+
+    private async drawLine(graphics: Graphics, points: {x: number, y: number}[], fillColor?: number): Promise<void> {
+        graphics.beginPath();
+        graphics.moveTo(points[0].x, points[0].y);
+
+        for (let i = 1; i < points.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+            graphics.lineTo(points[i].x, points[i].y);
+        }
+
+        if (fillColor !== undefined) {
+            graphics.fill();
+        }
+        graphics.stroke();
+    }
+
+    private async drawBezierCurve(
+        graphics: Graphics, start: {x: number, y: number}, cp1: {x: number, y: number}, 
+        cp2: {x: number, y: number}, end: {x: number, y: number}, steps: number = 20, fillColor?: number
+    ): Promise<void> {
+        if (fillColor !== undefined) {
+            graphics.setFillStyle({ color: fillColor });
+        }
+        
+        const points: {x: number, y: number}[] = [];
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const x = Math.pow(1-t, 3)*start.x + 
+                     3*Math.pow(1-t, 2)*t*cp1.x + 
+                     3*(1-t)*Math.pow(t, 2)*cp2.x + 
+                     Math.pow(t, 3)*end.x;
+            const y = Math.pow(1-t, 3)*start.y + 
+                     3*Math.pow(1-t, 2)*t*cp1.y + 
+                     3*(1-t)*Math.pow(t, 2)*cp2.y + 
+                     Math.pow(t, 3)*end.y;
+            points.push({x, y});
+        }
+
+        graphics.beginPath();
+        for (let i = 0; i < points.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+            if (i === 0) {
+                graphics.moveTo(points[i].x, points[i].y);
+            } else {
+                graphics.lineTo(points[i].x, points[i].y);
+            }
+            graphics.stroke();
+        }
+        
+        if (fillColor !== undefined) {
+            graphics.fill();
+        }
+    }
+
+    private async drawCurvePart(graphics: Graphics, points: {x: number, y: number}[], isFirst: boolean = false): Promise<void> {
+        if (isFirst) {
+            graphics.moveTo(points[0].x, points[0].y);
+        }
+
+        for (let i = 1; i < points.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 30));
+            graphics.lineTo(points[i].x, points[i].y);
+            graphics.stroke();
+        }
     }
 
     public async drawChristmasTree(): Promise<void> {
@@ -104,149 +183,144 @@ export class DrawingCanvas extends Container {
         const layerHeight = treeHeight / 6;
         const layers = 5;
 
-        const treeGraphics = new Graphics();
-        this.addChild(treeGraphics);
-        this.lines.push(treeGraphics);
+        const potGraphics = new Graphics();
+        const trunkGraphics = new Graphics();
+        const leavesGraphics = new Graphics();
+        const decorationsGraphics = new Graphics();
+        const starGraphics = new Graphics();
+        const wavyLinesGraphics = new Graphics();
 
-        const drawCommands: Array<() => void> = [];
+        this.treeLayer.addChild(
+            potGraphics, 
+            trunkGraphics, 
+            leavesGraphics, 
+            wavyLinesGraphics,
+            decorationsGraphics, 
+            starGraphics
+        );
 
-        // Add pot drawing commands first
-        const trunkWidth = baseWidth * 0.08;
-        const trunkHeight = treeHeight * 0.08;
-        const potWidth = trunkWidth * 2.5;
-        const potHeight = trunkHeight * 1.2;
+        // Vẽ chậu
+        potGraphics.setStrokeStyle({ width: 2, color: 0x8b4513 });
+        potGraphics.setFillStyle({ color: 0xcd853f });
+        const potWidth = baseWidth * 0.08 * 2.5;
+        const potHeight = treeHeight * 0.08 * 1.2;
         const potTopWidth = potWidth * 1.2;
 
-        drawCommands.push(() => {
-            treeGraphics.setStrokeStyle({
-                width: 2,
-                color: 0x654321,
-                alignment: 0.5
-            });
-            treeGraphics.beginFill(0x8b4513);
-            treeGraphics.beginPath();
-            treeGraphics.moveTo(centerX - potTopWidth/2, startY + trunkHeight);
-            treeGraphics.lineTo(centerX - potWidth/2, startY + trunkHeight + potHeight);
-            treeGraphics.lineTo(centerX + potWidth/2, startY + trunkHeight + potHeight);
-            treeGraphics.lineTo(centerX + potTopWidth/2, startY + trunkHeight);
-            treeGraphics.closePath();
-            treeGraphics.fill();
-            treeGraphics.stroke();
-        });
+        await this.drawLine(potGraphics, [
+            {x: centerX - potTopWidth/2, y: startY + treeHeight * 0.08},
+            {x: centerX - potWidth/2, y: startY + treeHeight * 0.08 + potHeight},
+            {x: centerX + potWidth/2, y: startY + treeHeight * 0.08 + potHeight},
+            {x: centerX + potTopWidth/2, y: startY + treeHeight * 0.08},
+            {x: centerX - potTopWidth/2, y: startY + treeHeight * 0.08}
+        ], 0xcd853f);
 
-        // Add trunk drawing commands
-        drawCommands.push(() => {
-            treeGraphics.setStrokeStyle({
-                width: 2,
-                color: 0x0b5345,
-                alignment: 0.5
-            });
-            treeGraphics.beginFill(0x8b4513);
-            treeGraphics.beginPath();
-            treeGraphics.moveTo(centerX - trunkWidth/2, startY);
-            treeGraphics.lineTo(centerX - trunkWidth/2, startY + trunkHeight);
-            treeGraphics.lineTo(centerX + trunkWidth/2, startY + trunkHeight);
-            treeGraphics.lineTo(centerX + trunkWidth/2, startY);
-            treeGraphics.closePath();
-            treeGraphics.fill();
-            treeGraphics.stroke();
-        });
+        // Vẽ thân cây
+        trunkGraphics.setStrokeStyle({ width: 2, color: 0x8b4513 });
+        trunkGraphics.setFillStyle({ color: 0xa0522d });
+        const trunkWidth = baseWidth * 0.08;
+        const trunkHeight = treeHeight * 0.08;
 
-        // Prepare drawing commands for tree layers from bottom to top
+        await this.drawLine(trunkGraphics, [
+            {x: centerX - trunkWidth/2, y: startY},
+            {x: centerX - trunkWidth/2, y: startY + trunkHeight},
+            {x: centerX + trunkWidth/2, y: startY + trunkHeight},
+            {x: centerX + trunkWidth/2, y: startY},
+            {x: centerX - trunkWidth/2, y: startY}
+        ], 0xa0522d);
+
+        // Vẽ các tầng lá từ dưới lên
         for (let i = 0; i < layers; i++) {
             const layerScale = 1 + (layers - i - 1) * 0.2;
             const currentLayerHeight = layerHeight * layerScale;
             const currentY = startY - i * layerHeight * 1.1;
-            const layerWidth = baseWidth * (1 - i * 0.15);
+            const layerW = baseWidth * (1 - i * 0.15);
 
-            // Draw left half of the layer
-            drawCommands.push(() => {
-                treeGraphics.setStrokeStyle({
-                    width: 2,
-                    color: 0x0b5345,
-                    alignment: 0.5
-                });
-                treeGraphics.beginFill(0x2ecc71);
-                treeGraphics.beginPath();
-                treeGraphics.moveTo(centerX - layerWidth/2, currentY);
-                treeGraphics.bezierCurveTo(
-                    centerX - layerWidth/3,
-                    currentY,
-                    centerX - layerWidth/6,
-                    currentY - currentLayerHeight * 1.1,
-                    centerX,
-                    currentY - currentLayerHeight * 1.0
-                );
-            });
+            leavesGraphics.setStrokeStyle({ width: 2, color: 0x0b5345 });
 
-            // Draw right half of the layer
-            drawCommands.push(() => {
-                treeGraphics.bezierCurveTo(
-                    centerX + layerWidth/6,
-                    currentY - currentLayerHeight * 1.1,
-                    centerX + layerWidth/3,
-                    currentY,
-                    centerX + layerWidth/2,
-                    currentY
-                );
-                treeGraphics.closePath();
-                treeGraphics.fill();
-                treeGraphics.stroke();
-            });
+            const leftStart = {x: centerX - layerW/2, y: currentY};
+            const leftCP1 = {x: centerX - layerW/3, y: currentY};
+            const leftCP2 = {x: centerX - layerW/6, y: currentY - currentLayerHeight * 1.1};
+            const topPoint = {x: centerX, y: currentY - currentLayerHeight};
+            const rightCP1 = {x: centerX + layerW/6, y: currentY - currentLayerHeight * 1.1};
+            const rightCP2 = {x: centerX + layerW/3, y: currentY};
+            const rightEnd = {x: centerX + layerW/2, y: currentY};
 
-            // Add decorative curves for this layer
+            const layerPoints: {x: number, y: number}[] = [];
+            layerPoints.push(leftStart);
+
+            // Tạo điểm đường cong bên trái
+            for (let t = 0; t <= 1; t += 0.1) {
+                const x = Math.pow(1-t, 3)*leftStart.x + 3*Math.pow(1-t, 2)*t*leftCP1.x + 3*(1-t)*Math.pow(t, 2)*leftCP2.x + Math.pow(t,3)*topPoint.x;
+                const y = Math.pow(1-t, 3)*leftStart.y + 3*Math.pow(1-t, 2)*t*leftCP1.y + 3*(1-t)*Math.pow(t, 2)*leftCP2.y + Math.pow(t,3)*topPoint.y;
+                layerPoints.push({x,y});
+            }
+
+            // Tạo điểm đường cong bên phải
+            for (let t = 0; t <= 1; t += 0.1) {
+                const x = Math.pow(1-t, 3)*topPoint.x + 3*Math.pow(1-t, 2)*t*rightCP1.x + 3*(1-t)*Math.pow(t, 2)*rightCP2.x + Math.pow(t,3)*rightEnd.x;
+                const y = Math.pow(1-t, 3)*topPoint.y + 3*Math.pow(1-t, 2)*t*rightCP1.y + 3*(1-t)*Math.pow(t, 2)*rightCP2.y + Math.pow(t,3)*rightEnd.y;
+                layerPoints.push({x,y});
+            }
+
+            layerPoints.push(leftStart);
+
+            await this.drawLayerWithAnimation(leavesGraphics, layerPoints, 0x2ecc71);
+
+            wavyLinesGraphics.setStrokeStyle({ width: 1, color: 0x0b5345 });
+            wavyLinesGraphics.setFillStyle({ color: 0x0b5345 });
+            
             const numSegments = 5 + (layers - i - 1) * 2;
-            const segmentWidth = layerWidth / numSegments;
-
+            const segmentWidth = layerW / numSegments;
+            
             for (let j = 0; j < numSegments; j++) {
-                const startX = centerX - layerWidth/2 + j * segmentWidth;
+                const startX = centerX - layerW/2 + j * segmentWidth;
                 const controlX = startX + segmentWidth/2;
                 const endX = startX + segmentWidth;
 
-                drawCommands.push(() => {
-                    treeGraphics.beginFill(0x0b5345);
-                    treeGraphics.moveTo(startX, currentY);
-                    treeGraphics.quadraticCurveTo(
-                        controlX,
-                        currentY + layerHeight * 0.2,
-                        endX,
-                        currentY
-                    );
-                    treeGraphics.lineTo(endX, currentY);
-                    treeGraphics.endFill();
-                });
+                wavyLinesGraphics.beginPath();
+                await new Promise(resolve => setTimeout(resolve, 30));
+                wavyLinesGraphics.moveTo(startX, currentY);
+                wavyLinesGraphics.quadraticCurveTo(
+                    controlX,
+                    currentY + layerHeight * 0.2,
+                    endX,
+                    currentY
+                );
+                wavyLinesGraphics.fill();
+                wavyLinesGraphics.stroke();
             }
         }
 
-        // Add star drawing commands last
+        // Vẽ ngôi sao trên cùng
         const starSize = baseWidth * 0.12;
-        drawCommands.push(() => {
-            this.drawStar(treeGraphics, centerX, startY - treeHeight - starSize/4, starSize);
-        });
+        const starY = startY - treeHeight - starSize/4;
+        starGraphics.setStrokeStyle({ width: 2, color: 0xffd700 });
+        starGraphics.setFillStyle({ color: 0xffd700 });
 
-        // Add decoration drawing commands
-        drawCommands.push(() => {
-            this.addTreeDecorations(treeGraphics, centerX, startY, baseWidth, treeHeight);
-        });
+        // Vẽ ngôi sao
+        const starPoints: {x: number, y: number}[] = [];
+        for (let i = 0; i <= 10; i++) {
+            const radius = i % 2 === 0 ? starSize : starSize * 0.4;
+            const angle = (i * Math.PI) / 5;
+            const x = centerX + Math.cos(angle - Math.PI/2) * radius;
+            const y = starY + Math.sin(angle - Math.PI/2) * radius;
+            starPoints.push({x, y});
+        }
+        starPoints.push(starPoints[0]); // Thêm điểm đầu tiên vào cuối để khép kín
 
-        // Execute all drawing commands with animation
-        await this.animateDrawing(treeGraphics, drawCommands, 50);
+        // Vẽ đường viền và tô màu
+        await this.drawLine(starGraphics, starPoints, 0xffd700);
+
+        // Thêm trang trí trên cây
+        await this.addTreeDecorations(decorationsGraphics, centerX, startY, baseWidth, treeHeight);
     }
 
     private drawStar(graphics: Graphics, x: number, y: number, size: number): void {
-        // Đặt style cho viền
-        graphics.setStrokeStyle({
-            width: 2,
-            color: 0xffd700,  // Màu vàng cho viền
-            alignment: 0.5
-        });
-
+        graphics.setStrokeStyle({ width: 2, color: 0xffd700 });
+        graphics.setFillStyle({ color: 0xffd700 });
         const points = 5;
         const outerRadius = size;
         const innerRadius = size * 0.4;
-
-        // Bắt đầu tô màu vàng cho ngôi sao
-        graphics.beginFill(0xffd700);  // Màu vàng cho phần tô
 
         graphics.beginPath();
         for (let i = 0; i < points * 2; i++) {
@@ -258,35 +332,29 @@ export class DrawingCanvas extends Container {
             if (i === 0) graphics.moveTo(pointX, pointY);
             else graphics.lineTo(pointX, pointY);
         }
-        graphics.closePath();
-        graphics.fill();    // Tô màu
-        graphics.stroke();  // Vẽ viền
+        graphics.fill();
+        graphics.stroke();
     }
 
-    private addTreeDecorations(graphics: Graphics, centerX: number, startY: number, width: number, height: number): void {
+    private async addTreeDecorations(graphics: Graphics, centerX: number, startY: number, width: number, height: number): Promise<void> {
         const colors = [0xff0000, 0xffd700, 0x4169e1, 0xff69b4];
         const layerHeight = height / 4;
         
-        // Thêm trang trí cho từng tầng
-        for (let layer = 0; layer < 5; layer++) {
+        for (let layer = 4; layer >= 0; layer--) {
             const currentY = startY - layer * layerHeight * 1.1;
             const layerWidth = width * (1 - layer * 0.15);
             const currentLayerHeight = layerHeight * (1 + (5 - layer - 1) * 0.2);
 
-            // Chỉ vẽ trang trí trong phần thân cây (không vẽ quanh ngôi sao)
-            if (layer < 4) {  // Bỏ qua tầng trên cùng gần ngôi sao
-                // Trang trí bên trong tán lá
+            if (layer < 4) {
                 const numDecorations = 6;
                 for (let i = 0; i < numDecorations; i++) {
                     const randomX = centerX + (Math.random() - 0.5) * layerWidth * 0.8;
                     const randomY = currentY - Math.random() * currentLayerHeight * 0.7;
-
                     if (randomY < currentY && randomY > currentY - currentLayerHeight) {
                         this.addDecoration(graphics, randomX, randomY, colors);
                     }
                 }
 
-                // Thêm trang trí dọc theo đường viền dưới
                 const edgeDecorations = 4;
                 for (let i = 0; i <= edgeDecorations; i++) {
                     const t = i / edgeDecorations;
@@ -298,25 +366,41 @@ export class DrawingCanvas extends Container {
         }
     }
 
-    // Thêm hàm helper để vẽ từng quả trang trí
     private addDecoration(graphics: Graphics, x: number, y: number, colors: number[]): void {
         const color = colors[Math.floor(Math.random() * colors.length)];
-        
-        // Giảm độ ngẫu nhiên của vị trí
         const offsetX = (Math.random() - 0.5) * 2;
         const offsetY = (Math.random() - 0.5) * 2;
 
-        // Vẽ và tô màu quả châu
-        graphics.beginFill(color);
-        graphics.setStrokeStyle({
-            width: 1,
-            color: 0x000000,
-            alignment: 0.5
-        });
-
+        graphics.setStrokeStyle({ width: 1, color: 0x000000 });
+        graphics.setFillStyle({ color });
         graphics.beginPath();
-        graphics.arc(x + offsetX, y + offsetY, 3, 0, Math.PI * 2);
-        graphics.closePath();
+        graphics.circle(x + offsetX, y + offsetY, 3);
         graphics.fill();
     }
-} 
+
+    private async drawLayerWithAnimation(parentGraphics: Graphics, points: {x: number, y: number}[], fillColor: number): Promise<void> {
+        const layerGraphics = new Graphics();
+        parentGraphics.addChild(layerGraphics);
+
+        for (let i = 1; i <= points.length; i++) {
+            layerGraphics.clear();
+            layerGraphics.setStrokeStyle({width: 2, color: 0x0b5345});
+            layerGraphics.setFillStyle({color: fillColor});
+            layerGraphics.beginPath();
+            layerGraphics.moveTo(points[0].x, points[0].y);
+
+            for (let j = 1; j < i; j++) {
+                layerGraphics.lineTo(points[j].x, points[j].y);
+            }
+
+            if (i === points.length) {
+                layerGraphics.fill();
+                layerGraphics.stroke();
+            } else {
+                layerGraphics.stroke();
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 30));
+        }
+    }
+}

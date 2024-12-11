@@ -16,6 +16,8 @@ import page7 from './assets/images/stories/7.jpg';
 import page8 from './assets/images/stories/8.jpg';
 import bg2 from './assets/images/bg2.jpg';
 import { DrawScreen } from './screens/DrawScreen';
+import { Music } from './audio/Music';
+import bgMusic from './assets/musics/bg.mp3';
 
 export class Game {
     private app: Application;
@@ -28,6 +30,23 @@ export class Game {
     constructor() {
         this.app = new Application();
         this.updateDimensions();
+
+        // Khởi tạo nhạc nền
+        Music.init(bgMusic);
+
+        // Thêm sự kiện cho toàn bộ tương tác người dùng
+        const startMusic = () => {
+            Music.play();
+            // Xóa các event listener sau khi đã phát nhạc
+            document.removeEventListener('click', startMusic);
+            document.removeEventListener('keydown', startMusic);
+            document.removeEventListener('touchstart', startMusic);
+        };
+
+        // Lắng nghe nhiều loại tương tác
+        document.addEventListener('click', startMusic);
+        document.addEventListener('keydown', startMusic);
+        document.addEventListener('touchstart', startMusic);
     }
 
     private updateDimensions() {
@@ -95,7 +114,7 @@ export class Game {
         
         this.confirmationScreen.setCallbacks(
             () => {
-                // When user confirms, show story screen
+                Music.setVolume(0.3); // Giảm volume khi bắt đầu story
                 this.showStoryScreen();
             },
             () => console.log('User cancelled!')
@@ -114,7 +133,7 @@ export class Game {
                         image: page1
                     },
                     {
-                        text: "Tom không có cha mẹ, cậu sống nhờ bà ngoại trong một căn nhà nhỏ xiêu vẹo ở cuối làng. Mỗi ngày, Tom đều giúp bà chẻ củi và nhặt những cành cây khô trong rừng để sưởi ấm. Cậu chưa từng được nhận quà Giáng sinh, nhưng trong tim, cậu vẫn luôn giữ niềm tin rằng ông già Noel sẽ mang đến điều kỳ diệu. “Liệu năm nay có gì khác không nhỉ?” Tom thầm nghĩ khi nhìn lên bầu trời đầy tuyết.",
+                        text: "Tom không có cha mẹ, cậu sống nhờ bà ngoại trong một căn nhà nhỏ xiêu vẹo ở cuối làng. Mỗi ngày, Tom đều giúp bà chẻ củi và nhặt những cành cây khô trong rừng để sưởi ��m. Cậu chưa từng được nhận quà Giáng sinh, nhưng trong tim, cậu vẫn luôn giữ niềm tin rằng ông già Noel sẽ mang đến điều kỳ diệu. “Liệu năm nay có gì khác không nhỉ?” Tom thầm nghĩ khi nhìn lên bầu trời đầy tuyết.",
                         image: page2
                     },
                     {
@@ -122,7 +141,7 @@ export class Game {
                         image: page3
                     },
                     {
-                        text: "Đêm khuya, khi mọi thứ đều yên ắng, ông già Noel xuất hiện trên chiếc xe tuần lộc. Ông nhìn thấy căn nhà nhỏ của Tom và ánh sáng yếu ớt từ bên trong. Bước đến bên cửa sổ, ông tìm thấy bức thư nhỏ. Khi đọc dòng chữ trong thư, trái tim ông tràn ngập xúc động. “Một ước nguyện đặc biệt,” ông thì thầm. “Cậu bé này không chỉ nghĩ đến mình mà còn nghĩ đến hạnh phúc của mọi người...”",
+                        text: "Đêm khuya, khi mọi thứ đều yên ắng, ông già Noel xuất hiện trên chiếc xe tuần lộc. Ông nhìn thấy căn nhà nhỏ của Tom và ánh sáng yếu ớt từ bên trong. Bước đến bên cửa sổ, ông tìm thấy bức thư nh���. Khi đọc dòng chữ trong thư, trái tim ông tràn ngập xúc động. “Một ước nguyện đặc biệt,” ông thì thầm. “Cậu bé này không chỉ nghĩ đến mình mà còn nghĩ đến hạnh phúc của mọi người...”",
                         image: page4
                     },
                     {
@@ -130,11 +149,11 @@ export class Game {
                         image: page5
                     },
                     {
-                        text: "Từ ngày đó, Tom bắt đầu tìm cách giúp đỡ mọi người. Cậu nhặt củi giúp bà cụ hàng xóm, đẩy xe hàng cho bác thợ rèn, và kể chuyện cười cho những đứa trẻ trong làng. Điều kỳ lạ là mỗi khi có ai đó mỉm cười, chiếc chuông bạc trong túi Tom lại ngân lên một tiếng nhẹ nhàng. Mỗi tiếng chuông là một ngôi sao nhỏ sáng lên trên bầu trời.",
+                        text: "Từ ngày đó, Tom bắt đầu tìm cách giúp đỡ mọi người. Cậu nhặt củi giúp bà cụ hàng xóm, đẩy xe hàng cho bác thợ rèn, và kể chuyện cười cho những đứa trẻ trong làng. Điều kỳ lạ là mỗi khi có ai đó mỉm cười, chiếc chuông bạc trong túi Tom lại ngân lên m��t tiếng nhẹ nhàng. Mỗi tiếng chuông là một ngôi sao nhỏ sáng lên trên bầu trời.",
                         image: page6
                     },
                     {
-                        text: "Đêm Giáng sinh, cả làng bất ngờ nhận ra bầu trời sáng rực với hàng ngàn ngôi sao. Mọi người tụ tập lại và cùng nhau trò chuyện, cười đùa. Ai cũng cảm nhận được hơi ấm kỳ diệu lan tỏa khắp nơi. Cậu bé Tom đứng bên cạnh bà, ngắm nhìn bầu trời và mỉm cười hạnh phúc. Cậu hiểu rằng, món quà quý giá nhất không phải là những thứ xa hoa, mà là niềm vui và tình yêu thương dành cho người khác.",
+                        text: "Đêm Giáng sinh, cả làng bất ngờ nhận ra bầu trời sáng rực với hàng ngàn người sao. Mọi người tụ tập lại và cùng nhau trò chuyện, cười đùa. Ai cũng cảm nhận được hơi ấm kỳ diệu lan tỏa khắp nơi. Cậu bé Tom đứng bên cạnh bà, ngắm nhìn bầu trời và mỉm cười hạnh phúc. Cậu hiểu rằng, món quà quý giá nhất không phải là những thứ xa hoa, mà là niềm vui và tình yêu thương dành cho người khác.",
                         image: page7
                     },
                     {
@@ -162,6 +181,7 @@ export class Game {
                         duration: 0.5
                     });
                     this.currentScreen = this.storyScreen;
+                    Music.setVolume(0.3);
                 }
             });
         }
@@ -191,6 +211,7 @@ export class Game {
                     duration: 0.5
                 });
                 this.currentScreen = drawScreen;
+                Music.setVolume(0.5);
             }
         });
     }

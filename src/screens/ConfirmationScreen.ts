@@ -121,7 +121,7 @@ export class ConfirmationScreen extends Container {
             },
             () => {
                 this.onCancel?.();
-                this.character.showDialog("Ồ, thật đáng tiếc...");
+                this.character.showDialog("Có được gì đâu, chơi tiếp đi!")
             }
         );
 
